@@ -1,0 +1,33 @@
+{
+    "files.autoSave": "afterDelay",
+    "editor.formatOnSave": true,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": true,
+    "editor.tabSize": 4,
+    // Python formatting & linting
+    "python.formatting.provider": "black",
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true,
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4,
+        "editor.indentSize": 4
+    },
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit",
+        "source.fixAll": "explicit"
+    },
+    "black-formatter.args": [
+        "--line-length",
+        "88"
+    ],
+    "editor.formatOnType": true,
+    "editor.formatOnPaste": true,
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": false,
+    "python.linting.pylintEnabled": false,
+    "python.linting.mypyEnabled": false,
+    "python.linting.ruffEnabled": true,
+    "python.defaultInterpreterPath": "${env:HOME}/miniforge3/envs/rdp/bin/python",
+    "cmake.sourceDirectory": "/home/sanjar.normuradov/git/rdp"
+}

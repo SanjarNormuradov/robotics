@@ -1,0 +1,49 @@
+name: robotics
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  # Base environment
+  - python=3.10
+  - pip
+
+  # Minimal conda packages only (pip will handle the rest)
+  - numpy
+  - pandas
+  - pip:
+    # Install everything via pip without conflict checking
+    - pre-commit
+    # PyTorch dependencies (CUDA 12.1 compatible) - will override conda versions
+    - torch==2.3.1+cu121
+    - torchvision==0.18.1+cu121
+    - --extra-index-url https://download.pytorch.org/whl/cu121
+    # JAX dependencies
+    - --find-links https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    - "jax[cuda]"
+    - flax
+    # Core dependencies
+    - tqdm
+    - gym
+    - PyOpenGL-accelerate
+    - opencv-python
+    # Web dependencies
+    - "jinja2>=3.0.3"
+    - webencodings
+    - beautifulsoup4
+    - "matplotlib>=3.4.0"
+    # ML/Data
+    - tensorflow_probability
+    - wandb
+    - pandas
+    - ipdb
+    - h5py
+    - termcolor
+    - tensorboard
+    - hydra-core
+    - hydra-submitit-launcher
+    - dm-env
+    - imageio
+    - imageio-ffmpeg
+    - blosc
+    - einops
