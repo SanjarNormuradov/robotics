@@ -5,6 +5,7 @@ Provides Simple, Threaded, and Process versions of the RealSense camera.
 
 import time
 from typing import Any, Dict, Optional
+import omegaconf
 
 import numpy as np
 
@@ -61,6 +62,19 @@ class RealSenseConfig(CameraConfig):
         self.color_white_balance = color_white_balance
         self.depth_exposure = depth_exposure
         self.depth_gain = depth_gain
+
+    def __repr__(self):
+        dict_repr = super().__repr__()
+        return (
+            f"{dict_repr}\n"
+            f"serial_number={self.serial_number}\n"
+            f"depth_range={self.depth_range}\n"
+            f"color_exposure={self.color_exposure}\n"
+            f"color_gain={self.color_gain}\n"
+            f"color_white_balance={self.color_white_balance}\n"
+            f"depth_exposure={self.depth_exposure}\n"
+            f"depth_gain={self.depth_gain}"
+        )
 
 
 class RealSenseBase:
@@ -179,7 +193,6 @@ class RealSenseBase:
 
             frame = CameraFrame()
             frame.timestamp = time.time()
-            frame.frame_number = self._frame_count
 
             # Get color frame
             if self.config.enable_color:
@@ -193,12 +206,7 @@ class RealSenseBase:
                 if depth_frame:
                     frame.depth_image = np.asanyarray(depth_frame.get_data())
 
-            # Add intrinsics if available and requested
             if frame.color_image is not None or frame.depth_image is not None:
-                if self.intrinsics is not None:
-                    frame.intrinsics = self.intrinsics
-                else:
-                    frame.intrinsics = self.get_intrinsics()
                 return frame
 
         except Exception as e:
@@ -291,49 +299,47 @@ class RealSenseBase:
         try:
             profile = self.pipeline.get_active_profile()
 
-            if self.config.enable_color:
-                try:
-                    color_sensor = profile.get_device().first_color_sensor()
-                    # report global time
-                    # https://github.com/IntelRealSense/librealsense/pull/3909
-                    color_sensor.set_option(rs.option.global_time_enabled, 1)
-                    if color_white_balance is None:
-                        # auto exposure
-                        self.color_sensor.set_option(
-                            rs.option.enable_auto_white_balance, 1.0
-                        )
-                    else:
-                        # manual exposure
-                        self.color_sensor.set_option(
-                            rs.option.enable_auto_white_balance, 0.0
-                        )
-                        self.color_sensor.set_option(
-                            rs.option.white_balance, color_white_balance
-                        )
-                    if color_exposure is None and color_gain is None:
-                        color_sensor.set_option(rs.option.enable_auto_exposure, 1)
-                    else:
-                        color_sensor.set_option(rs.option.enable_auto_exposure, 0)
-                        if color_exposure is not None:
-                            color_sensor.set_option(rs.option.exposure, color_exposure)
-                        if color_gain is not None:
-                            color_sensor.set_option(rs.option.gain, color_gain)
-                except Exception as e:
-                    self.logger.warning(f"Failed to get color sensor: {e}")
+            try:
+                color_sensor = profile.get_device().first_color_sensor()
+                # report global time
+                # https://github.com/IntelRealSense/librealsense/pull/3909
+                color_sensor.set_option(rs.option.global_time_enabled, 1)
+                if color_white_balance is None:
+                    # auto exposure
+                    self.color_sensor.set_option(
+                        rs.option.enable_auto_white_balance, 1.0
+                    )
+                else:
+                    # manual exposure
+                    self.color_sensor.set_option(
+                        rs.option.enable_auto_white_balance, 0.0
+                    )
+                    self.color_sensor.set_option(
+                        rs.option.white_balance, color_white_balance
+                    )
+                if color_exposure is None and color_gain is None:
+                    color_sensor.set_option(rs.option.enable_auto_exposure, 1)
+                else:
+                    color_sensor.set_option(rs.option.enable_auto_exposure, 0)
+                    if color_exposure is not None:
+                        color_sensor.set_option(rs.option.exposure, color_exposure)
+                    if color_gain is not None:
+                        color_sensor.set_option(rs.option.gain, color_gain)
+            except Exception as e:
+                self.logger.warning(f"Failed to get color sensor: {e}")
 
-            if self.config.enable_depth:
-                try:
-                    depth_sensor = profile.get_device().first_depth_sensor()
-                    if depth_exposure is None and depth_gain is None:
-                        depth_sensor.set_option(rs.option.enable_auto_exposure, 1)
-                    else:
-                        depth_sensor.set_option(rs.option.enable_auto_exposure, 0)
-                        if depth_exposure is not None:
-                            depth_sensor.set_option(rs.option.exposure, depth_exposure)
-                        if depth_gain is not None:
-                            depth_sensor.set_option(rs.option.gain, depth_gain)
-                except Exception as e:
-                    self.logger.warning(f"Failed to get depth sensor: {e}")
+            try:
+                depth_sensor = profile.get_device().first_depth_sensor()
+                if depth_exposure is None and depth_gain is None:
+                    depth_sensor.set_option(rs.option.enable_auto_exposure, 1)
+                else:
+                    depth_sensor.set_option(rs.option.enable_auto_exposure, 0)
+                    if depth_exposure is not None:
+                        depth_sensor.set_option(rs.option.exposure, depth_exposure)
+                    if depth_gain is not None:
+                        depth_sensor.set_option(rs.option.gain, depth_gain)
+            except Exception as e:
+                self.logger.warning(f"Failed to get depth sensor: {e}")
 
             return True
         except Exception as e:

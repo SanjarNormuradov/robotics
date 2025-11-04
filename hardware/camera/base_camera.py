@@ -21,8 +21,6 @@ class CameraFrame:
     color_image: Optional[np.ndarray] = None
     depth_image: Optional[np.ndarray] = None
     timestamp: float = 0.0
-    frame_number: int = 0
-    intrinsics: Optional[Dict[str, Any]] = None
 
 
 class CameraConfig:
@@ -49,6 +47,17 @@ class CameraConfig:
         # Store any additional config parameters
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+    def __repr__(self):
+        return (
+            f"camera_name={self.camera_name}\n"
+            f"fps={self.fps}\n"
+            f"color_resolution={self.color_resolution}\n"
+            f"depth_resolution={self.depth_resolution}\n"
+            f"enable_depth={self.enable_depth}\n"
+            f"enable_color={self.enable_color}\n"
+            f"save_intrinsics={self.save_intrinsics}"
+        )
 
 
 class BaseCamera(ABC):
@@ -169,6 +178,7 @@ class SimpleCamera(BaseCamera):
         if frame:
             self._frame_count += 1
         return frame
+
 
 class ThreadedCamera(BaseCamera):
     """Base class for threaded camera implementations"""

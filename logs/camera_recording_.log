@@ -1,0 +1,13 @@
+2025-11-03 18:33:58 | INFO     | [my_camera] - No serial number specified, using first detected device: 218722270644
+2025-11-03 18:33:58 | WARNING  | [my_camera] - Failed to get color sensor: Could not find requested sensor type!
+2025-11-03 18:34:03 | INFO     | [my_camera] - RealSense camera initialized successfully
+2025-11-03 18:34:03 | INFO     | [my_camera] - Camera started in threaded mode
+2025-11-03 18:34:33 | INFO     | [camera_recording] - Image saving enabled
+2025-11-03 18:34:49 | INFO     | [camera_recording] - Image saving disabled
+2025-11-03 18:35:23 | INFO     | [camera_recording] - Image saving enabled
+2025-11-03 18:35:35 | INFO     | [camera_recording] - Image saving disabled
+2025-11-03 18:35:54 | INFO     | [camera_recording] - Image saving enabled
+2025-11-03 18:36:08 | INFO     | [camera_recording] - Image saving disabled
+2025-11-03 18:36:11 | INFO     | [camera_recording] - Exiting...
+2025-11-03 18:36:11 | INFO     | [my_camera] - RealSense camera cleanup completed
+2025-11-03 18:36:11 | INFO     | [my_camera] - Camera stopped

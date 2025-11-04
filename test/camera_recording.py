@@ -12,6 +12,8 @@ def main(args):
     save_dir = args.save_dir
     os.makedirs(save_dir, exist_ok=True)
     setup_logging(log_dir="logs", log_file_prefix="camera_recording_")
+    logger = get_logger("camera_recording")
+
     config = RealSenseConfig(
         camera_name=args.camera_name,
         fps=args.fps,
@@ -20,6 +22,11 @@ def main(args):
         serial_number=args.serial_number,
         enable_color=args.enable_color,
         enable_depth=args.enable_depth,
+        color_exposure=args.color_exposure,
+        color_gain=args.color_gain,
+        color_white_balance=args.color_white_balance,
+        depth_exposure=args.depth_exposure,
+        depth_gain=args.depth_gain,
     )
     camera = RealSenseThreaded(config)
     visualizer = ImageVisualizer(
@@ -29,7 +36,6 @@ def main(args):
         text_color=(0, 255, 255),  # Yellow text
         text_size=0.8,
     )
-    logger = get_logger("camera_recording")
 
     if not camera.start():
         logger.error("Failed to start camera")
@@ -72,7 +78,7 @@ def parse_args():
     parser.add_argument(
         "--camera-name", type=str, default="my_camera", help="Name of the camera"
     )
-    parser.add_argument("--fps", type=int, default=60, help="Frames per second")
+    parser.add_argument("--fps", type=int, default=30, help="Frames per second")
     parser.add_argument(
         "--color-width", type=int, default=640, help="Color resolution width"
     )
@@ -86,13 +92,29 @@ def parse_args():
         "--depth-height", type=int, default=480, help="Depth resolution height"
     )
     parser.add_argument(
+        "--color-exposure", type=int, default=5000, help="Color sensor exposure"
+    )
+    parser.add_argument("--color-gain", type=int, default=100, help="Color sensor gain")
+    parser.add_argument(
+        "--color-white-balance",
+        type=int,
+        default=100,
+        help="Color sensor white balance",
+    )
+    parser.add_argument(
+        "--depth-exposure", type=int, default=5000, help="Depth sensor exposure"
+    )
+    parser.add_argument(
+        "--depth-gain", type=int, default=124, help="Depth sensor gain (16-248)"
+    )
+    parser.add_argument(
         "--serial-number", type=str, default="", help="Camera serial number"
     )
     parser.add_argument(
-        "--enable-color", action="store_true", help="Enable color stream"
+        "--enable-color", type=bool, default=True, help="Enable color stream"
     )
     parser.add_argument(
-        "--enable-depth", action="store_true", help="Enable depth stream"
+        "--enable-depth", type=bool, default=False, help="Enable depth stream"
     )
     return parser.parse_args()
 
