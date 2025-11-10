@@ -6,67 +6,71 @@ import random
 from typing import Optional, Tuple
 
 SUPPORTED_EXTENSION_LIST = [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"]
+RANDOM_BRIGHTNESS_CONTRAST = [25.0, 0.25, 1.0]
+RANDOM_GAMMA = [0.25, 1.0]
+RANDOM_HSV = [10.0, 0.25, 0.25, 1.0]
 
 
-def adjust_brightness_contrast(image, brightness_delta=0, contrast_scale=1.0):
+def adjust_brightness_contrast(image, bc_delta: Tuple[float, float, float]):
     """
     Adjust brightness and contrast of an image.
 
     Args:
         image: PIL Image object
-        brightness_delta: Amount to add to brightness (-100 to 100)
-        contrast_scale: Factor to scale contrast (0.5 to 2.0)
+        bc_delta: Tuple of (brightness_delta, contrast_delta, is_random)
 
     Returns:
         PIL Image with adjusted brightness and contrast
     """
-    if brightness_delta == 0 and contrast_scale == 1.0:
+    b_delta, c_delta, is_random = bc_delta
+    if b_delta == 0.0 and c_delta == 0.0:
         return image
 
-    print(f"Applying brightness/contrast: B={brightness_delta}, C={contrast_scale:.2f}")
+    is_random = bool(is_random)
+    if is_random:
+        b_delta = random.randint(-abs(int(b_delta)), abs(int(b_delta)))
+        c_delta = random.uniform(-abs(c_delta), abs(c_delta))
+    b_scale = max(0.0, 1.0 + (b_delta / 100.0))
+    c_scale = max(0.0, 1.0 + c_delta)
+    print(f"Applying brightness/contrast: B={b_scale:.2f}, C={c_scale:.2f}")
 
     # Apply brightness adjustment
-    if brightness_delta != 0:
-        enhancer = ImageEnhance.Brightness(image)
-        # Convert delta to multiplier (0 = black, 1 = original, 2 = very bright)
-        brightness_factor = 1.0 + (brightness_delta / 100.0)
-        brightness_factor = max(0.0, brightness_factor)  # Ensure non-negative
-        image = enhancer.enhance(brightness_factor)
-
+    enhancer = ImageEnhance.Brightness(image)
+    image = enhancer.enhance(b_scale)
     # Apply contrast adjustment
-    if contrast_scale != 1.0:
-        enhancer = ImageEnhance.Contrast(image)
-        image = enhancer.enhance(contrast_scale)
+    enhancer = ImageEnhance.Contrast(image)
+    image = enhancer.enhance(c_scale)
 
     return image
 
 
-def apply_gamma_correction(image, gamma=1.0):
+def apply_gamma(image, gamma: Tuple[float, float]):
     """
     Apply gamma correction to an image.
 
     Args:
         image: PIL Image object
-        gamma: Gamma value (0.5 = darker, 1.0 = no change, 2.0 = brighter)
+        gamma[0]: gamma delta (-0.5 = brighter, 0.0 = no change, 0.5 = darker)
+        gamma[1]: whether gamma[0] sets max/min for random
 
     Returns:
         PIL Image with gamma correction applied
     """
-    if gamma == 1.0:
+    gamma_delta, is_random = gamma
+    if gamma_delta == 0.0:
         return image
 
-    print(f"Applying gamma correction: γ={gamma:.2f}")
+    is_random = bool(is_random)
+    if is_random:
+        gamma_delta = random.uniform(-abs(gamma_delta), abs(gamma_delta))
+    _gamma = max(0.0, 1.0 + gamma_delta)
+    print(f"Applying gamma correction: γ={_gamma:.2f}")
 
-    # Convert to numpy array
     img_array = np.array(image, dtype=np.float32)
-
     # Normalize to 0-1 range
     img_array = img_array / 255.0
-
     # Apply gamma correction
-    img_corrected = np.power(img_array, gamma)
-
-    # Convert back to 0-255 range
+    img_corrected = np.power(img_array, _gamma)
     img_corrected = (img_corrected * 255).astype(np.uint8)
 
     return Image.fromarray(img_corrected)
@@ -83,35 +87,35 @@ def adjust_hsv(image, hsv_delta: Tuple[float, float, float]):
     Returns:
         PIL Image with color jittering applied
     """
-    hue_delta, saturation_delta, value_delta, is_random = hsv_delta
+    h_delta, s_delta, v_delta, is_random = hsv_delta
+    if h_delta == 0.0 and s_delta == 0.0 and v_delta == 0.0:
+        return image
     is_random = bool(is_random)
-    print(
-        f"Applying HSV adjustments: H={hue_delta}, S={saturation_delta:.2f}, V={value_delta:.2f}"
-    )
+
     image = image.convert("RGB")
-    # Convert PIL RGB to OpenCV format
     img_array = np.array(image)
 
     if is_random:
-        hue_delta = random.uniform(-hue_delta, hue_delta)
-        saturation_delta = random.uniform(-saturation_delta, saturation_delta)
-        value_delta = random.uniform(-value_delta, value_delta)
+        h_delta, s_delta, v_delta = np.abs((h_delta, s_delta, v_delta))
+        h_delta = random.uniform(-h_delta, h_delta)
+        s_delta = random.uniform(-s_delta, s_delta)
+        v_delta = random.uniform(-v_delta, v_delta)
+    print(
+        f"Applying HSV adjustments: H={h_delta:.2f}, S={s_delta:.2f}, V={v_delta:.2f}"
+    )
 
     # Only process if we have a 3-channel RGB image
     if len(img_array.shape) == 3 and img_array.shape[2] == 3:
-        # Convert RGB to BGR for OpenCV
         img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
-        # Convert to HSV
         hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV).astype(np.float32)
 
         # Adjust hue (wrap around 0-360)
-        hsv[:, :, 0] = (hsv[:, :, 0] + hue_delta) % 360
+        hsv[:, :, 0] = (hsv[:, :, 0] + h_delta) % 360
         # Adjust saturation
-        hsv[:, :, 1] = np.clip(hsv[:, :, 1] * (1.0 + saturation_delta), 0, 255)
+        hsv[:, :, 1] = np.clip(hsv[:, :, 1] * (1.0 + s_delta), 0, 255)
         # Adjust value
-        hsv[:, :, 2] = np.clip(hsv[:, :, 2] * (1.0 + value_delta), 0, 255)
+        hsv[:, :, 2] = np.clip(hsv[:, :, 2] * (1.0 + v_delta), 0, 255)
 
-        # Convert back to BGR then RGB
         hsv = hsv.astype(np.uint8)
         img_bgr_adjusted = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
         img_rgb_adjusted = cv2.cvtColor(img_bgr_adjusted, cv2.COLOR_BGR2RGB)
@@ -175,18 +179,18 @@ def process_images(args):
             message += f" resize {fname} to {width}x{height};"
         if args.change_ext:
             message += f" convert from {in_ext} to {out_ext};"
-        if args.adjust_brightness_contrast:
-            if args.random_brightness_contrast:
-                message += f" apply random brightness/contrast;"
-            else:
-                message += f" adjust brightness/contrast (B:{args.brightness_delta}, C:{args.contrast_scale:.2f});"
-        if args.apply_gamma:
-            if args.random_gamma:
-                message += f" apply random gamma correction;"
-            else:
-                message += f" apply gamma correction (γ:{args.gamma:.2f});"
-        if args.adjust_hsv:
+        if np.any(args.adjust_brightness_contrast[:2]):
+            message += f" adjust brightness/contrast;"
+        if args.random_brightness_contrast:
+            message += f" adjust brightness/contrast randomly;"
+        if args.apply_gamma[0] != 0.0:
+            message += f" apply gamma correction;"
+        if args.random_gamma:
+            message += f" apply gamma randomly;"
+        if np.any(args.adjust_hsv[:3]):
             message += f" adjust HSV;"
+        if args.random_hsv:
+            message += f" adjust HSV randomly;"
         message += f" save to {out_fpath}"
 
         if args.dry_run:
@@ -203,32 +207,28 @@ def process_images(args):
         if args.resize:
             out_img = out_img.resize((width, height))
 
-        # # Apply brightness/contrast adjustments if specified
-        # if args.adjust_brightness_contrast:
-        #     if args.random_brightness_contrast:
-        #         brightness_delta = random.randint(-30, 30)
-        #         contrast_scale = random.uniform(0.7, 1.5)
-        #     else:
-        #         brightness_delta = args.brightness_delta
-        #         contrast_scale = args.contrast_scale
-        #     out_img = adjust_brightness_contrast(
-        #         out_img, brightness_delta, contrast_scale
-        #     )
+        # Apply brightness/contrast adjustments
+        if args.adjust_brightness_contrast:
+            out_img = adjust_brightness_contrast(
+                out_img, args.adjust_brightness_contrast
+            )
+        if args.random_brightness_contrast or args.random_augments:
+            out_img = adjust_brightness_contrast(out_img, RANDOM_BRIGHTNESS_CONTRAST)
 
-        # # Apply gamma correction if specified
-        # if args.apply_gamma:
-        #     if args.random_gamma:
-        #         gamma = random.uniform(0.7, 1.5)
-        #     else:
-        #         gamma = args.gamma
-        #     out_img = apply_gamma_correction(out_img, gamma)
+        # Apply gamma correction
+        if args.apply_gamma:
+            out_img = apply_gamma(out_img, args.apply_gamma)
+        if args.random_gamma or args.random_augments:
+            out_img = apply_gamma(out_img, RANDOM_GAMMA)
 
-        # Apply HSV adjustments if specified
+        # Apply HSV adjustments
         if args.adjust_hsv:
             out_img = adjust_hsv(
                 out_img,
                 args.adjust_hsv,
             )
+        if args.random_hsv or args.random_augments:
+            out_img = adjust_hsv(out_img, RANDOM_HSV)
 
         if out_ext == "jpg":
             out_img.save(out_fpath, quality=95)
@@ -313,63 +313,64 @@ def parse_args():
     parser.add_argument(
         "--dry_run",
         action="store_true",
-        help="If set, only print actions without saving files.",
+        help="If set, only print actions without execution.",
     )
-
     # Brightness/Contrast adjustment arguments
     parser.add_argument(
         "--adjust_brightness_contrast",
-        action="store_true",
-        help="If set, adjust brightness and contrast of the images.",
+        type=float,
+        nargs=3,
+        default=(0.0, 0.0, 1.0),
+        metavar=("BRIGHTNESS_DELTA", "CONTRAST_DELTA", "IS_RANDOM"),
+        help="If set, apply brightness and contrast adjustments."
+        "BRIGHTNESS_DELTA: (-100 to 100); -25 darker, 0 no change, 25 brighter."
+        "CONTRAST_DELTA: (-1.0, 1.0); -0.5 lower, 0 no change, 0.5 higher."
+        "IS_RANDOM: whether *_DELTA sets max/min value for random.",
     )
     parser.add_argument(
         "--random_brightness_contrast",
         action="store_true",
-        help="If set, apply random brightness/contrast adjustments.",
+        help="If set, use default random brightness/contrast adjustments.",
     )
-    parser.add_argument(
-        "--brightness_delta",
-        type=int,
-        default=0,
-        help="Brightness adjustment delta (-100 to 100). Only used if --random_brightness_contrast is not set.",
-    )
-    parser.add_argument(
-        "--contrast_scale",
-        type=float,
-        default=1.0,
-        help="Contrast scale factor (0.5 to 2.0). Only used if --random_brightness_contrast is not set.",
-    )
-
     # Gamma correction arguments
     parser.add_argument(
         "--apply_gamma",
-        action="store_true",
-        help="If set, apply gamma correction to the images.",
+        type=float,
+        nargs=2,
+        default=(0.0, 1.0),
+        metavar=("GAMMA_DELTA", "IS_RANDOM"),
+        help="If set, apply gamma correction."
+        "GAMMA_DELTA: (-1.0, 1.0); -0.5 brighter, 0 no change, 0.5 darker."
+        "IS_RANDOM: whether GAMMA_DELTA sets max/min value for random.",
     )
     parser.add_argument(
         "--random_gamma",
         action="store_true",
-        help="If set, apply random gamma correction.",
+        help="If set, use default random gamma adjustment.",
     )
-    parser.add_argument(
-        "--gamma",
-        type=float,
-        default=1.0,
-        help="Gamma correction value (0.5 to 2.0). Only used if --random_gamma is not set.",
-    )
-
     # Color jittering arguments
     parser.add_argument(
         "--adjust_hsv",
         type=float,
         nargs=4,
         default=(0.0, 0.0, 0.0, 1.0),
-        metavar=("hue_delta", "SATURATION_DELTA", "VALUE_DELTA", "IS_RANDOM"),
+        metavar=("HUE_DELTA", "SATURATION_DELTA", "VALUE_DELTA", "IS_RANDOM"),
         help="If set, apply delta to HSV values of the images."
-        "hue_delta: maximum hue adjustment in degrees (0-180). "
-        "SATURATION_DELTA: maximum saturation scale adjustment (0.0-1.0). "
-        "VALUE_DELTA: maximum value scale adjustment (0.0-1.0). "
-        "IS_RANDOM: whether to apply random adjustments (0 or 1).",
+        "HUE_DELTA: maximum hue adjustment in degrees (0-360). "
+        "SATURATION_DELTA: maximum saturation scale adjustment (-1.0, 1.0). "
+        "VALUE_DELTA: maximum value scale adjustment (-1.0, 1.0). "
+        "IS_RANDOM: whether *_DELTA sets max/min value for random.",
+    )
+    parser.add_argument(
+        "--random_hsv",
+        action="store_true",
+        help="If set, use default random HSV adjustments.",
+    )
+    # Random augmentations
+    parser.add_argument(
+        "--random_augments",
+        action="store_true",
+        help="If set, use default random augmentations (brightness, contrast, gamma, HSV).",
     )
 
     return parser.parse_args()
